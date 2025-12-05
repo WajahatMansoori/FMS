@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Shared.FacilityManagement;
 
@@ -28,4 +29,10 @@ public partial class Slot
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+    
+    [ForeignKey(nameof(SlotGenerationConfigId))]
+    public SlotGenerationConfig? SlotGenerationConfig { get; set; }
+
+    [ForeignKey(nameof(FacilityResourceId))]
+    public FacilityResource? FacilityResource { get; set; }
 }

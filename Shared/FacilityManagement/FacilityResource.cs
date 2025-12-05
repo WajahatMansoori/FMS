@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Shared.FacilityManagement;
 
@@ -20,4 +21,6 @@ public partial class FacilityResource
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+    [ForeignKey(nameof(FacilityId))]
+    public Facility? Facility { get; set; }
 }

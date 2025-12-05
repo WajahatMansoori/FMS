@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Shared.FacilityManagement;
 
@@ -28,4 +29,7 @@ public partial class Facility
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+    
+    [ForeignKey(nameof(LocationId))]
+    public Location? Location { get; set; }
 }
