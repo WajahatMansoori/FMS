@@ -5,7 +5,7 @@ using System.Text;
 using AutoMapper;
 using System.Threading.Tasks;
 
-namespace FacilityManagement.Application.Maping
+namespace FacilityManagement.Application.Mapping
 {
     public class Profiles: Profile
     {
