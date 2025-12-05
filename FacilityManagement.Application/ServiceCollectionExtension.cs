@@ -15,7 +15,7 @@ namespace FacilityManagement.Application
     {
         public static IServiceCollection AddFacilityManagementService(this IServiceCollection services, string connectionString)
         {
-            services.AddDbContext<FacilityManagementContext>(options =>
+            services.AddDbContext<AstrikFacilityContext>(options =>
                 options.UseSqlServer(connectionString, sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure();

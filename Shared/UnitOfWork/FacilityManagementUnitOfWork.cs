@@ -12,10 +12,10 @@ namespace Shared.UnitOfWork
 {
     public class FacilityManagementUnitOfWork : IFacilityManagementUnitOfWork
     {
-        private readonly FacilityManagementContext _context;
+        private readonly AstrikFacilityContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public FacilityManagementUnitOfWork(FacilityManagementContext context, IHttpContextAccessor httpContextAccessor)
+        public FacilityManagementUnitOfWork(AstrikFacilityContext context, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
