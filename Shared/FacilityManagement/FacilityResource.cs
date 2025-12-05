@@ -21,6 +21,7 @@ public partial class FacilityResource
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+    
     [ForeignKey(nameof(FacilityId))]
-    public Facility? Facility { get; set; }
+    public Facility Facility { get; set; } = null!;
 }

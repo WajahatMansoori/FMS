@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Shared.FacilityManagement;
 
@@ -30,4 +31,7 @@ public partial class Booking
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+
+    [ForeignKey(nameof(SlotId))]
+    public virtual Slot Slot { get; set; } = null!;
 }
