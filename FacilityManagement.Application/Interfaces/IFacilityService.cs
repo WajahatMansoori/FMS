@@ -10,6 +10,8 @@ namespace FacilityManagement.Application.Interfaces
 {
     public interface IFacilityService
     {
-        Task<BaseResponse<List<FacilitesResponseDTO>?>> GetAllFacilites();
+        Task<BaseResponse<List<FacilitesResponseDTO>?>> GetAllFacilitesAsync();
+
+        Task<BaseResponse<List<FacilityResourcesResponseDTO>?>> GetFacilityResources(int facilityId);
     }
 }
