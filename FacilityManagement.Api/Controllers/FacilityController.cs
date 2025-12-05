@@ -6,11 +6,10 @@ namespace FacilityManagement.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class FacilitySlotController : BaseController
+    public class FacilityController : BaseController
     {
-        public FacilitySlotController() 
+        public FacilityController() 
         {
         }
-
     }
 }
