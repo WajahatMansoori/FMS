@@ -38,6 +38,7 @@ namespace FacilityManagement.Application
             services.AddScoped<IFacilitySlotService, FacilitySlotService>();
             services.AddScoped<IFacilityService, FacilityService>();
             services.AddScoped<IFacilityManagementUnitOfWork, FacilityManagementUnitOfWork>();
+            services.AddScoped<IFacilityBookingService, FacilityBookingService>();
             services.AddAutoMapper(typeof(Profiles));
 
             return services;

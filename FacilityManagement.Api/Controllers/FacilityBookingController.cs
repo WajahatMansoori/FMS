@@ -9,21 +9,21 @@ namespace FacilityManagement.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class FacilitySlotController : BaseController
+    public class FacilityBookingController : BaseController
     {
-        private readonly IFacilitySlotService _facilitySlotService;
+        private readonly IFacilityBookingService _facilityBookingService;
 
-        public FacilitySlotController(IFacilitySlotService facilitySlotService) 
+        public FacilityBookingController(IFacilityBookingService facilityBookingService)
         {
-            _facilitySlotService = facilitySlotService;
+            _facilityBookingService = facilityBookingService;
         }
 
-        [HttpPost("book-slot")]
-        public async Task<IActionResult> AddFacilityBookingAsync([FromBody] BookingRequestDTO bookingRequestDTO)
+        [HttpPost()]
+        public async Task<IActionResult> AddAsync([FromBody] BookingRequestDTO bookingRequestDTO)
         {
             try
             {
-                var response = await _facilitySlotService.AddAsync(bookingRequestDTO);
+                var response = await _facilityBookingService.AddAsync(bookingRequestDTO);
                 return GenerateResponse(response);
             }
             catch (Exception ex)

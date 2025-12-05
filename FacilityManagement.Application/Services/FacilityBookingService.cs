@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
 using FacilityManagement.Application.DTOs.Request;
-using FacilityManagement.Application.Enums;
 using FacilityManagement.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,15 +7,20 @@ using Shared.Base;
 using Shared.Base.Responses;
 using Shared.FacilityManagement;
 using Shared.UnitOfWork;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FacilityManagement.Application.Services
 {
-    public class FacilitySlotService : BaseDatabaseService<AstrikFacilityContext>, IFacilitySlotService
+    internal class FacilityBookingService : BaseDatabaseService<AstrikFacilityContext>, IFacilityBookingService
     {
         private readonly IMapper _mapper;
         private readonly IFacilityManagementUnitOfWork _facilityManagementUnitOfWork;
 
-        public FacilitySlotService(IMapper mapper, AstrikFacilityContext context, IFacilityManagementUnitOfWork facilityManagementUnitOfWork, IConfiguration configuration)
+        public FacilityBookingService(IMapper mapper, AstrikFacilityContext context, IFacilityManagementUnitOfWork facilityManagementUnitOfWork, IConfiguration configuration)
             : base(context)
         {
             _mapper = mapper;
@@ -33,14 +32,12 @@ namespace FacilityManagement.Application.Services
         {
             return await HandleVoidActionAsync(async () =>
             {
-                // Validate input
                 if (bookingRequestDTO == null)
                 {
                     InitMessageResponse("BadRequest", "Booking information not found.");
                     return;
                 }
 
-                // Get the slot with related data
                 var slot = await _context.Slots
                     .Include(s => s.FacilityResource)
                     .ThenInclude(fr => fr.Facility)
@@ -52,14 +49,12 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
-                // Check if slot is already booked (status is not Available)
                 if (slot.FacilitySlotStatusId != (int)Enums.FacilitySlotStatus.Available)
                 {
                     InitMessageResponse("BadRequest", "This slot is already booked.");
                     return;
                 }
 
-                // Validate that booking is at least 15 minutes before slot start time
                 var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
                 var currentDateTime = DateTime.UtcNow;
                 var timeDifference = slotStartDateTime - currentDateTime;
@@ -70,7 +65,6 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
-                // Check employee's bookings for current day
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 var restrictedStatuses = new List<int>
                 {
@@ -88,15 +82,14 @@ namespace FacilityManagement.Application.Services
                         && restrictedStatuses.Contains(b.Slot.FacilitySlotStatusId.Value))
                     .CountAsync();
 
-                if (slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.HasValue 
-                    && todayBookingsCount >= slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.Value 
+                if (slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.HasValue
+                    && todayBookingsCount >= slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.Value
                     && slot.SlotDate == today)
                 {
                     InitMessageResponse("BadRequest", "You have already booked 2 slots for today. You can book slots for future days.");
                     return;
                 }
 
-                // Create the booking
                 var booking = new Booking
                 {
                     SlotId = bookingRequestDTO.SlotId,
@@ -110,7 +103,6 @@ namespace FacilityManagement.Application.Services
 
                 await _context.Bookings.AddAsync(booking);
 
-                // Update slot status to Reserved
                 slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Reserved;
                 slot.UpdatedBy = bookingRequestDTO.EmployeeId;
                 slot.UpdatedOn = DateTime.UtcNow;
