@@ -17,12 +17,26 @@ namespace FacilityManagement.Api.Controllers
             _facilityService = facilityService;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllFacilities()
+        [HttpGet("get-all-facilities")]
+        public async Task<IActionResult> GetAllFacilitiesAsync()
         {
             try
             {
-                var response = await _facilityService.GetAllFacilites();
+                var response = await _facilityService.GetAllFacilitesAsync();
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
+
+        [HttpGet("get-facility-resources")]
+        public async Task<IActionResult> GetFacilityResourcesAsync(int facilityId)
+        {
+            try
+            {
+                var response = await _facilityService.GetFacilityResources(facilityId);
                 return GenerateResponse(response);
             }
             catch (Exception ex)

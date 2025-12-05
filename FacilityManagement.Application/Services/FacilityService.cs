@@ -32,34 +32,62 @@ namespace FacilityManagement.Application.Services
 
         }
 
-        public async Task<BaseResponse<List<FacilitesResponseDTO>?>> GetAllFacilites()
+        public async Task<BaseResponse<List<FacilitesResponseDTO>?>> GetAllFacilitesAsync()
         {
-            try 
+            return await HandleActionAsync(async () =>
             {
-                return await HandleActionAsync(async () =>
+                var facilities = await _context.Facilities
+                .Where(f => f.IsActive == true)
+                .Select(f => new FacilitesResponseDTO
                 {
-                    var facilities = await _context.Facilities
-                    .Where(f => f.IsActive == true)
-                    .Select(f => new FacilitesResponseDTO
+                    FacilityId = f.FacilityId,
+                    FacilityName = f.FacilityName ?? string.Empty,
+                })
+                .ToListAsync();
+
+                if (facilities == null)
+                {
+                    InitMessageResponse("NotFound", "Facilities not found");
+                    return null;
+                }
+
+                return facilities;
+            });
+        }
+
+        public async Task<BaseResponse<List<FacilityResourcesResponseDTO>?>> GetFacilityResources(int facilityId)
+        {
+            return await HandleActionAsync(async () =>
+            {
+                var facilityName = await _context.Facilities
+                    .Where(f => f.FacilityId == facilityId)
+                    .Select(f => f.FacilityName)
+                    .FirstOrDefaultAsync();
+
+                if (facilityName == null)
+                {
+                    InitMessageResponse("NotFound", "Invalid Facility ID");
+                    return null;
+                }
+
+                var resources = await _context.FacilityResources
+                    .Where(fr => fr.FacilityId == facilityId && fr.IsActive == true)
+                    .Select(fr => new FacilityResourcesResponseDTO
                     {
-                        FacilityId = f.FacilityId,
-                        FacilityName = f.FacilityName ?? string.Empty,
+                        FacilityResourceId = fr.FacilityResourceId,
+                        FacilityResourceName = fr.FacilityResourceName ?? string.Empty,
+                        FacilityName = facilityName
                     })
                     .ToListAsync();
 
-                    if (facilities == null)
-                    {
-                        InitMessageResponse("NotFound", "Facilities not found");
-                        return null;
-                    }
+                if (!resources.Any())
+                {
+                    InitMessageResponse("NotFound", "Facility resources not found");
+                    return null;
+                }
 
-                    return facilities;
-                });
-            }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
+                return resources;
+            });
         }
     }
 }

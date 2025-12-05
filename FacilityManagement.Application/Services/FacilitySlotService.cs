@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
 using FacilityManagement.Application.DTOs.Request;
+using FacilityManagement.Application.DTOs.Response;
 using FacilityManagement.Application.Enums;
 using FacilityManagement.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -29,94 +30,148 @@ namespace FacilityManagement.Application.Services
             _facilityManagementUnitOfWork = facilityManagementUnitOfWork;
         }
 
-        public async Task<BaseResponse<Task>> AddAsync(BookingRequestDTO bookingRequestDTO)
+        public async Task<BaseResponse<Task>> AddFacilitySlotAsync(AddFacilitySlotRequestDTO request)
         {
             return await HandleVoidActionAsync(async () =>
             {
-                // Validate input
-                if (bookingRequestDTO == null)
+                // Validation
+                if (request == null)
                 {
-                    InitMessageResponse("BadRequest", "Booking information not found.");
+                    InitMessageResponse("BadRequest", "Request cannot be null.");
                     return;
                 }
 
-                // Get the slot with related data
-                var slot = await _context.Slots
-                    .Include(s => s.FacilityResource)
-                    .ThenInclude(fr => fr.Facility)
-                    .FirstOrDefaultAsync(s => s.SlotId == bookingRequestDTO.SlotId && s.IsActive == true);
-
-                if (slot == null)
+                if (request.SlotStartDate > request.SlotEndDate)
                 {
-                    InitMessageResponse("NotFound", "Slot not found.");
+                    InitMessageResponse("BadRequest", "Slot Start Date cannot be greater than Slot End Date.");
                     return;
                 }
 
-                // Check if slot is already booked (status is not Available)
-                if (slot.FacilitySlotStatusId != (int)Enums.FacilitySlotStatus.Available)
+                if (request.StartTime >= request.EndTime)
                 {
-                    InitMessageResponse("BadRequest", "This slot is already booked.");
+                    InitMessageResponse("BadRequest", "Start Time must be less than End Time.");
                     return;
                 }
 
-                // Validate that booking is at least 15 minutes before slot start time
-                var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
-                var currentDateTime = DateTime.UtcNow;
-                var timeDifference = slotStartDateTime - currentDateTime;
+                // Get FacilityResource and Facility details
+                var facilityResource = await _context.FacilityResources
+                    .FirstOrDefaultAsync(fr => fr.FacilityResourceId == request.FacilityResourceId && fr.IsActive == true);
 
-                if (timeDifference.TotalMinutes < 15 && timeDifference.TotalMinutes > 0)
+                if (facilityResource == null)
                 {
-                    InitMessageResponse("BadRequest", "You can only book a slot at least 15 minutes before its start time.");
+                    InitMessageResponse("NotFound", "Facility Resource not found.");
                     return;
                 }
 
-                // Check employee's bookings for current day
-                var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                var restrictedStatuses = new List<int>
-                {
-                    (int)Enums.FacilitySlotStatus.Reserved,
-                    (int)Enums.FacilitySlotStatus.InProgress,
-                    (int)Enums.FacilitySlotStatus.Completed
-                };
+                var facility = await _context.Facilities
+                    .FirstOrDefaultAsync(f => f.FacilityId == facilityResource.FacilityId && f.IsActive == true);
 
-                var todayBookingsCount = await _context.Bookings
-                    .Include(b => b.Slot)
-                    .Where(b => b.EmployeeId == bookingRequestDTO.EmployeeId
-                        && b.Slot.SlotDate == today
-                        && b.IsActive == true
-                        && b.Slot.FacilitySlotStatusId.HasValue
-                        && restrictedStatuses.Contains(b.Slot.FacilitySlotStatusId.Value))
-                    .CountAsync();
-
-                if (slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.HasValue 
-                    && todayBookingsCount >= slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.Value 
-                    && slot.SlotDate == today)
+                if (facility == null)
                 {
-                    InitMessageResponse("BadRequest", "You have already booked 2 slots for today. You can book slots for future days.");
+                    InitMessageResponse("NotFound", "Facility not found.");
                     return;
                 }
 
-                // Create the booking
-                var booking = new Booking
+                if (!facility.SlotDurationMinutes.HasValue || facility.SlotDurationMinutes.Value <= 0)
                 {
-                    SlotId = bookingRequestDTO.SlotId,
-                    EmployeeId = bookingRequestDTO.EmployeeId,
-                    BookingDate = DateTime.UtcNow,
-                    Remarks = bookingRequestDTO.Remarks,
-                    CreatedBy = bookingRequestDTO.EmployeeId,
-                    CreatedOn = DateTime.UtcNow,
+                    InitMessageResponse("BadRequest", "Invalid Slot Duration in Facility configuration.");
+                    return;
+                }
+
+                // Create SlotGenerationConfig entry
+                var slotGenerationConfig = new SlotGenerationConfig
+                {
+                    FacilityId = facility.FacilityId,
+                    IsWithWeekend = request.IsWithWeekend,
+                    CreatedOn = DateTime.Now,
                     IsActive = true
                 };
 
-                await _context.Bookings.AddAsync(booking);
+                await _context.SlotGenerationConfigs.AddAsync(slotGenerationConfig);
+                await _facilityManagementUnitOfWork.SaveChangesAsync();
 
-                // Update slot status to Reserved
-                slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Reserved;
-                slot.UpdatedBy = bookingRequestDTO.EmployeeId;
-                slot.UpdatedOn = DateTime.UtcNow;
-                _context.Slots.Update(slot);
+                // Generate slots
+                int totalSlotsCreated = 0;
+                int skippedSlots = 0;
+                var slotDuration = facility.SlotDurationMinutes.Value;
 
-                await _facilityManagementUnitOfWork.SaveChangesAsync(bookingRequestDTO.EmployeeId);
+                // Get existing slots for this resource in the date range
+                var existingSlots = await _context.Slots
+                    .Where(s => s.FacilityResourceId == request.FacilityResourceId 
+                                && s.IsActive == true
+                                && s.SlotDate >= request.SlotStartDate 
+                                && s.SlotDate <= request.SlotEndDate)
+                    .Select(s => new { s.SlotDate, s.StartTime, s.EndTime })
+                    .ToListAsync();
+
+                // Loop through each date in the range
+                for (var currentDate = request.SlotStartDate; currentDate <= request.SlotEndDate; currentDate = currentDate.AddDays(1))
+                {
+                    // Check if weekend should be excluded
+                    if (!request.IsWithWeekend)
+                    {
+                        var dayOfWeek = currentDate.DayOfWeek;
+                        if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday)
+                        {
+                            continue; // Skip weekends
+                        }
+                    }
+
+                    // Generate slots for this date
+                    var currentTime = request.StartTime;
+                    
+                    while (currentTime < request.EndTime)
+                    {
+                        var slotEndTime = currentTime.AddMinutes(slotDuration);
+                        
+                        // Ensure we don't exceed the end time
+                        if (slotEndTime > request.EndTime)
+                        {
+                            break;
+                        }
+
+                        // Check if this slot already exists
+                        var slotExists = existingSlots.Any(es => 
+                            es.SlotDate == currentDate 
+                            && es.StartTime == currentTime 
+                            && es.EndTime == slotEndTime);
+
+                        if (slotExists)
+                        {
+                            skippedSlots++;
+                        }
+                        else
+                        {
+                            // Create new slot
+                            var slot = new Slot
+                            {
+                                FacilityResourceId = request.FacilityResourceId,
+                                SlotDate = currentDate,
+                                StartTime = currentTime,
+                                EndTime = slotEndTime,
+                                SlotGenerationConfigId = slotGenerationConfig.SlotGenerationConfigId,
+                                FacilitySlotStatusId = 1, // 1 = Available
+                                CreatedOn = DateTime.Now,
+                                IsActive = true
+                            };
+
+                            await _context.Slots.AddAsync(slot);
+                            totalSlotsCreated++;
+                        }
+
+                        currentTime = slotEndTime;
+                    }
+                }
+
+                // If no unique slots to create, return error
+                if (totalSlotsCreated == 0)
+                {
+                    InitMessageResponse("Conflict", "All slots in the specified date range already exist. No new slots were created.");
+                    return;
+                }
+
+                // Save all slots
+                await _facilityManagementUnitOfWork.SaveChangesAsync();
             });
         }
     }

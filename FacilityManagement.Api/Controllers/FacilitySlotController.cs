@@ -18,12 +18,12 @@ namespace FacilityManagement.Api.Controllers
             _facilitySlotService = facilitySlotService;
         }
 
-        [HttpPost("book-slot")]
-        public async Task<IActionResult> AddFacilityBookingAsync([FromBody] BookingRequestDTO bookingRequestDTO)
+        [HttpPost("add-facility-slot")]
+        public async Task<IActionResult> AddFacilitySlotAsync([FromBody] AddFacilitySlotRequestDTO request)
         {
             try
             {
-                var response = await _facilitySlotService.AddAsync(bookingRequestDTO);
+                var response = await _facilitySlotService.AddFacilitySlotAsync(request);
                 return GenerateResponse(response);
             }
             catch (Exception ex)

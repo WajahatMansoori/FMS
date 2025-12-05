@@ -23,7 +23,6 @@ namespace Shared.UnitOfWork
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            SetDefaultValues();
             return await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -33,67 +32,60 @@ namespace Shared.UnitOfWork
             return await _context.SaveChangesAsync(cancellationToken);
         }
 
-        private void SetDefaultValues(int? userId = null)
+        private void SetDefaultValues(int userId)
         {
+            var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+
             var entries = _context.ChangeTracker.Entries()
                 .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 
             foreach (var entry in entries)
             {
-                var ipAddress = IpAddressHelper.GetClientIp(_httpContextAccessor.HttpContext);
-
                 if (entry.State == EntityState.Added)
                 {
-                    if (entry.Property("CreatedBy") != null)
+                    foreach (var property in entry.Properties)
                     {
-                        if (userId.HasValue)
+                        switch (property.Metadata.Name)
                         {
-                            entry.Property("CreatedBy").CurrentValue = userId.Value;
+                            case "IsActive":
+                            case "IsEnabled":
+                                property.CurrentValue = true;
+                                break;
+                            case "CreatedOn":
+                                property.CurrentValue = DateTime.UtcNow;
+                                break;
+                            case "CreatedBy":
+                                property.CurrentValue = userId;
+                                break;
+                            case "IPAddress":
+                                property.CurrentValue = ipAddress;
+                                break;
                         }
-                        else
-                        {
-                            entry.Property("CreatedBy").CurrentValue = 0;
-                        }
-                    }
-
-                    if (entry.Property("CreatedOn") != null)
-                    {
-                        entry.Property("CreatedOn").CurrentValue = DateTime.Now;
-                    }
-
-                    if (entry.Property("IsActive") != null)
-                    {
-                        entry.Property("IsActive").CurrentValue = true;
-                    }
-
-                    if (entry.Property("IPAddress") != null)
-                    {
-                        entry.Property("IPAddress").CurrentValue = ipAddress;
                     }
                 }
-
-                if (entry.State == EntityState.Modified)
+                else if (entry.State == EntityState.Modified)
                 {
-                    if (entry.Property("UpdatedBy") != null)
+                    foreach (var property in entry.Properties)
                     {
-                        if (userId.HasValue)
+                        switch (property.Metadata.Name)
                         {
-                            entry.Property("UpdatedBy").CurrentValue = userId.Value;
+                            case "UpdatedBy":
+                                if (property.IsModified)
+                                {
+                                    property.CurrentValue = userId;
+                                }
+                                break;
+                            case "UpdatedOn":
+                                if (property.IsModified)
+                                {
+                                    property.CurrentValue = DateTime.UtcNow;
+                                }
+                                break;
+                            case "IPAddress":
+                                if (property.IsModified)
+                                    property.CurrentValue = ipAddress;
+                                break;
                         }
-                        else
-                        {
-                            entry.Property("UpdatedBy").CurrentValue = 0;
-                        }
-                    }
-
-                    if (entry.Property("UpdatedOn") != null)
-                    {
-                        entry.Property("UpdatedOn").CurrentValue = DateTime.Now;
-                    }
-
-                    if (entry.Property("IPAddress") != null)
-                    {
-                        entry.Property("IPAddress").CurrentValue = ipAddress;
                     }
                 }
             }
