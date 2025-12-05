@@ -1,0 +1,25 @@
+## Ignore build outputs
+bin/
+obj/
+
+## Ignore Visual Studio specific files
+.vs/
+*.user
+*.suo
+
+## Ignore build artifacts
+*.dll
+*.exe
+*.cache
+*.pdb
+*.mdb
+
+## Ignore others
+*.log
+*.tmp
+*.bak
+
+# Ignore user-specific Visual Studio files
+*.user
+**/Properties/PublishProfiles/*.pubxml
+**/Properties/PublishProfiles/*.pubxml.user
