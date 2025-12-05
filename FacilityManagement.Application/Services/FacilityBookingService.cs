@@ -56,16 +56,16 @@ namespace FacilityManagement.Application.Services
                 }
 
                 var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
-                var currentDateTime = DateTime.UtcNow;
+                var currentDateTime = DateTime.Now;
                 var timeDifference = slotStartDateTime - currentDateTime;
 
-                if (timeDifference.TotalMinutes < 15 && timeDifference.TotalMinutes > 0)
+                if (timeDifference.TotalMinutes < 15)
                 {
                     InitMessageResponse("BadRequest", "You can only book a slot at least 15 minutes before its start time.");
                     return;
                 }
 
-                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var today = DateOnly.FromDateTime(DateTime.Now);
                 var restrictedStatuses = new List<int>
                 {
                     (int)Enums.FacilitySlotStatus.Reserved,
@@ -94,10 +94,10 @@ namespace FacilityManagement.Application.Services
                 {
                     SlotId = bookingRequestDTO.SlotId,
                     EmployeeId = bookingRequestDTO.EmployeeId,
-                    BookingDate = DateTime.UtcNow,
+                    BookingDate = DateTime.Now,
                     Remarks = bookingRequestDTO.Remarks,
                     CreatedBy = bookingRequestDTO.EmployeeId,
-                    CreatedOn = DateTime.UtcNow,
+                    CreatedOn = DateTime.Now,
                     IsActive = true
                 };
 
@@ -105,7 +105,7 @@ namespace FacilityManagement.Application.Services
 
                 slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Reserved;
                 slot.UpdatedBy = bookingRequestDTO.EmployeeId;
-                slot.UpdatedOn = DateTime.UtcNow;
+                slot.UpdatedOn = DateTime.Now;
                 _context.Slots.Update(slot);
 
                 await _facilityManagementUnitOfWork.SaveChangesAsync(bookingRequestDTO.EmployeeId);
