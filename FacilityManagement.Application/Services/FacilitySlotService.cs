@@ -78,100 +78,117 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
-                // Create SlotGenerationConfig entry
-                var slotGenerationConfig = new SlotGenerationConfig
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    FacilityId = facility.FacilityId,
-                    IsWithWeekend = request.IsWithWeekend,
-                    CreatedOn = DateTime.Now,
-                    IsActive = true
-                };
-
-                await _context.SlotGenerationConfigs.AddAsync(slotGenerationConfig);
-                await _facilityManagementUnitOfWork.SaveChangesAsync();
-
-                // Generate slots
-                int totalSlotsCreated = 0;
-                int skippedSlots = 0;
-                var slotDuration = facility.SlotDurationMinutes.Value;
-
-                // Get existing slots for this resource in the date range
-                var existingSlots = await _context.Slots
-                    .Where(s => s.FacilityResourceId == request.FacilityResourceId 
-                                && s.IsActive == true
-                                && s.SlotDate >= request.SlotStartDate 
-                                && s.SlotDate <= request.SlotEndDate)
-                    .Select(s => new { s.SlotDate, s.StartTime, s.EndTime })
-                    .ToListAsync();
-
-                // Loop through each date in the range
-                for (var currentDate = request.SlotStartDate; currentDate <= request.SlotEndDate; currentDate = currentDate.AddDays(1))
-                {
-                    // Check if weekend should be excluded
-                    if (!request.IsWithWeekend)
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        var dayOfWeek = currentDate.DayOfWeek;
-                        if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday)
+                        var slotGenerationConfig = new SlotGenerationConfig
                         {
-                            continue; // Skip weekends
-                        }
-                    }
+                            FacilityId = facility.FacilityId,
+                            IsWithWeekend = request.IsWithWeekend,
+                            CreatedOn = DateTime.Now,
+                            IsActive = true
+                        };
 
-                    // Generate slots for this date
-                    var currentTime = request.StartTime;
-                    
-                    while (currentTime < request.EndTime)
-                    {
-                        var slotEndTime = currentTime.AddMinutes(slotDuration);
-                        
-                        // Ensure we don't exceed the end time
-                        if (slotEndTime > request.EndTime)
-                        {
-                            break;
-                        }
+                        await _context.SlotGenerationConfigs.AddAsync(slotGenerationConfig);
+                        await _facilityManagementUnitOfWork.SaveChangesAsync();
 
-                        // Check if this slot already exists
-                        var slotExists = existingSlots.Any(es => 
-                            es.SlotDate == currentDate 
-                            && es.StartTime == currentTime 
-                            && es.EndTime == slotEndTime);
+                        // Generate slots
+                        int totalSlotsCreated = 0;
+                        int skippedSlots = 0;
+                        var slotDuration = facility.SlotDurationMinutes.Value;
 
-                        if (slotExists)
+                        // Get existing slots for this resource in the date range
+                        var existingSlots = await _context.Slots
+                            .Where(s => s.FacilityResourceId == request.FacilityResourceId
+                                        && s.IsActive == true
+                                        && s.SlotDate >= request.SlotStartDate
+                                        && s.SlotDate <= request.SlotEndDate)
+                            .Select(s => new { s.SlotDate, s.StartTime, s.EndTime })
+                            .ToListAsync();
+
+                        // Loop through each date in the range
+                        for (var currentDate = request.SlotStartDate; currentDate <= request.SlotEndDate; currentDate = currentDate.AddDays(1))
                         {
-                            skippedSlots++;
-                        }
-                        else
-                        {
-                            // Create new slot
-                            var slot = new Slot
+                            // Check if weekend should be excluded
+                            if (!request.IsWithWeekend)
                             {
-                                FacilityResourceId = request.FacilityResourceId,
-                                SlotDate = currentDate,
-                                StartTime = currentTime,
-                                EndTime = slotEndTime,
-                                SlotGenerationConfigId = slotGenerationConfig.SlotGenerationConfigId,
-                                FacilitySlotStatusId = 1, // 1 = Available
-                                CreatedOn = DateTime.Now,
-                                IsActive = true
-                            };
+                                var dayOfWeek = currentDate.DayOfWeek;
+                                if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday)
+                                {
+                                    continue; // Skip weekends
+                                }
+                            }
 
-                            await _context.Slots.AddAsync(slot);
-                            totalSlotsCreated++;
+                            // Generate slots for this date
+                            var currentTime = request.StartTime;
+
+                            while (currentTime < request.EndTime)
+                            {
+                                var slotEndTime = currentTime.AddMinutes(slotDuration);
+
+                                // Ensure we don't exceed the end time
+                                if (slotEndTime > request.EndTime)
+                                {
+                                    break;
+                                }
+
+                                // Check if this slot already exists
+                                var slotExists = existingSlots.Any(es =>
+                                    es.SlotDate == currentDate
+                                    && es.StartTime == currentTime
+                                    && es.EndTime == slotEndTime);
+
+                                if (slotExists)
+                                {
+                                    skippedSlots++;
+                                }
+                                else
+                                {
+                                    // Create new slot
+                                    var slot = new Slot
+                                    {
+                                        FacilityResourceId = request.FacilityResourceId,
+                                        SlotDate = currentDate,
+                                        StartTime = currentTime,
+                                        EndTime = slotEndTime,
+                                        SlotGenerationConfigId = slotGenerationConfig.SlotGenerationConfigId,
+                                        FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Available, // 1 = Available
+                                        CreatedOn = DateTime.Now,
+                                        IsActive = true
+                                    };
+
+                                    await _context.Slots.AddAsync(slot);
+                                    totalSlotsCreated++;
+                                }
+
+                                currentTime = slotEndTime;
+                            }
                         }
 
-                        currentTime = slotEndTime;
+                        // If no unique slots to create, return error
+                        if (totalSlotsCreated == 0)
+                        {
+                            InitMessageResponse("Conflict", "All slots in the specified date range already exist. No new slots were created.");
+                            return;
+                        }
+
+                        // Save all slots
+                        await _facilityManagementUnitOfWork.SaveChangesAsync();
+                        await transaction.CommitAsync();
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        InitMessageResponse("BadRequest", ex.Message);
+                        return;
+                    }
+                });
 
-                // If no unique slots to create, return error
-                if (totalSlotsCreated == 0)
-                {
-                    InitMessageResponse("Conflict", "All slots in the specified date range already exist. No new slots were created.");
-                    return;
-                }
-
-                // Save all slots
-                await _facilityManagementUnitOfWork.SaveChangesAsync();
+                // Create SlotGenerationConfig entry
+              
             });
         }
     }
