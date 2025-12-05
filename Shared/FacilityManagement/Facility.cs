@@ -31,5 +31,5 @@ public partial class Facility
     public bool? IsActive { get; set; }
     
     [ForeignKey(nameof(LocationId))]
-    public Location? Location { get; set; }
+    public Location Location { get; set; } = null!;
 }

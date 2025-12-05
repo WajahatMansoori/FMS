@@ -18,7 +18,7 @@ public partial class Slot
 
     public int? SlotGenerationConfigId { get; set; }
 
-    public bool? IsBooked { get; set; }
+    public int? FacilitySlotStatusId { get; set; }
 
     public int? CreatedBy { get; set; }
 
@@ -31,8 +31,8 @@ public partial class Slot
     public bool? IsActive { get; set; }
     
     [ForeignKey(nameof(SlotGenerationConfigId))]
-    public SlotGenerationConfig? SlotGenerationConfig { get; set; }
+    public virtual SlotGenerationConfig SlotGenerationConfig { get; set; } = null!;
 
     [ForeignKey(nameof(FacilityResourceId))]
-    public FacilityResource? FacilityResource { get; set; }
+    public virtual FacilityResource FacilityResource { get; set; } = null!;
 }
