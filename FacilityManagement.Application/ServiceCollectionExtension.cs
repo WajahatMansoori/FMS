@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FacilityManagement.Application.Interfaces;
+using FacilityManagement.Application.Mapping;
+using FacilityManagement.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.FacilityManagement;
@@ -32,6 +35,9 @@ namespace FacilityManagement.Application
             // services.AddScoped<IYourService, YourService>();
 
             services.AddScoped<FileUploadHelper>();
+            services.AddScoped<IFacilitySlotService, FacilitySlotService>();
+            services.AddScoped<IFacilityManagementUnitOfWork, FacilityManagementUnitOfWork>();
+            services.AddAutoMapper(typeof(Profiles));
 
             return services;
         }
