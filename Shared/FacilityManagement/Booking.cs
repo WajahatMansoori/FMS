@@ -14,8 +14,6 @@ public partial class Booking
 
     public DateTime? BookingDate { get; set; }
 
-    public int? FacilitySlotStatusId { get; set; }
-
     public DateTime? CancelledDate { get; set; }
 
     public int? CancelledBy { get; set; }

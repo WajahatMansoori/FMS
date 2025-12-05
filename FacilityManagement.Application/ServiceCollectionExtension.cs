@@ -36,7 +36,7 @@ namespace FacilityManagement.Application
 
             services.AddScoped<FileUploadHelper>();
             services.AddScoped<IFacilitySlotService, FacilitySlotService>();
-            //services.AddScoped<IFacilityService, FacilityService>();
+            services.AddScoped<IFacilityService, FacilityService>();
             services.AddScoped<IFacilityManagementUnitOfWork, FacilityManagementUnitOfWork>();
             services.AddAutoMapper(typeof(Profiles));
 

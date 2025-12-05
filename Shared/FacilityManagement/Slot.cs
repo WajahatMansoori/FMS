@@ -18,7 +18,7 @@ public partial class Slot
 
     public int? SlotGenerationConfigId { get; set; }
 
-    public bool? IsBooked { get; set; }
+    public int? FacilitySlotStatusId { get; set; }
 
     public int? CreatedBy { get; set; }
 
