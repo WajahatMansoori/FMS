@@ -31,5 +31,19 @@ namespace FacilityManagement.Api.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
             }
         }
+
+        [HttpGet()]
+        public async Task<IActionResult> GetAllAsync([FromQuery] FacilitySlotFilterRequestDTO filterRequest)
+        {
+            try
+            {
+                var response = await _facilitySlotService.GetAllAsync(filterRequest);
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
     }
 }

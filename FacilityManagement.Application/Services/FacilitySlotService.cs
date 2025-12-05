@@ -174,5 +174,132 @@ namespace FacilityManagement.Application.Services
                 await _facilityManagementUnitOfWork.SaveChangesAsync();
             });
         }
+
+        public async Task<PagedBaseResponse<List<FacilitySlotResponseDTO>>> GetAllAsync(FacilitySlotFilterRequestDTO filterRequest)
+        {
+            return await HandlePaginatedActionAsync<FacilitySlotResponseDTO, FacilitySlotResponseDTO>(async () =>
+            {
+                var startDate = filterRequest.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                var endDate = filterRequest.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+                if (startDate > endDate)
+                {
+                    InitMessageResponse("BadRequest", "Start Date cannot be greater than End Date.");
+                    return null!;
+                }
+
+                if (!filterRequest.EmployeeId.HasValue)
+                {
+                    InitMessageResponse("BadRequest", "EmployeeId is required.");
+                    return null!;
+                }
+
+                // Start building query with navigation properties
+                var query = _context.Slots
+                    .Include(s => s.FacilityResource)
+                        .ThenInclude(fr => fr.Facility)
+                    .Where(s => s.IsActive == true
+                        && s.SlotDate >= startDate
+                        && s.SlotDate <= endDate);
+
+                var facilityRoleId = _context.Employees
+                    .Where(e => e.EmployeeId == filterRequest.EmployeeId && e.IsActive == true)
+                    .Select(e => e.FacilityRoleId)
+                    .FirstOrDefault();
+
+                // Apply role-based filtering
+                if (facilityRoleId == (int)Enums.FacilityRole.SuperAdmin)
+                {
+                    // Super Admin can view all slots (Available, Reserved, InProgress, Completed, Cancelled)
+                    // No additional filtering needed - shows all slots
+                }
+                else if (facilityRoleId == (int)Enums.FacilityRole.Employee)
+                {
+                    // Employee can only view their own booked slots (Reserved, InProgress, Completed, Cancelled)
+                    // Exclude Available slots for employees
+                    query = query.Where(s => s.FacilitySlotStatusId != (int)Enums.FacilitySlotStatus.Available);
+                }
+
+                // For employee role, filter by their bookings
+                if (facilityRoleId == (int)Enums.FacilityRole.Employee)
+                {
+                    var employeeSlotIds = await _context.Bookings
+                        .Where(b => b.EmployeeId == filterRequest.EmployeeId && b.IsActive == true)
+                        .Select(b => b.SlotId)
+                        .ToListAsync();
+
+                    query = query.Where(s => employeeSlotIds.Contains(s.SlotId));
+                }
+
+                // Get slot IDs for current page
+                var slotIds = await query
+                    .OrderBy(s => s.SlotDate)
+                    .ThenBy(s => s.StartTime)
+                    .Select(s => s.SlotId)
+                    .ToListAsync();
+
+                // Get total count
+                var totalItems = slotIds.Count;
+
+                // Apply pagination to slot IDs
+                var pagedSlotIds = slotIds
+                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
+                    .Take(filterRequest.PageSize)
+                    .ToList();
+
+                // Load bookings and employees for the paginated slots
+                var bookings = await _context.Bookings
+                    .Include(b => b.Slot)
+                    .Where(b => pagedSlotIds.Contains(b.SlotId.Value) && b.IsActive == true)
+                    .ToListAsync();
+
+                var employeeIds = bookings.Select(b => b.EmployeeId).Distinct().ToList();
+                var employees = await _context.Employees
+                    .Where(e => employeeIds.Contains(e.EmployeeId))
+                    .ToListAsync();
+
+                // Load facility slot statuses
+                var statuses = await _context.FacilitySlotStatuses.ToListAsync();
+
+                // Get paginated slots with all navigation properties
+                var slots = await _context.Slots
+                    .Include(s => s.FacilityResource)
+                        .ThenInclude(fr => fr.Facility)
+                    .Where(s => pagedSlotIds.Contains(s.SlotId))
+                    .OrderBy(s => s.SlotDate)
+                    .ThenBy(s => s.StartTime)
+                    .ToListAsync();
+
+                // Map to response DTO
+                var response = slots.Select(slot =>
+                {
+                    var booking = bookings.FirstOrDefault(b => b.SlotId == slot.SlotId);
+                    var employee = booking != null ? employees.FirstOrDefault(e => e.EmployeeId == booking.EmployeeId) : null;
+                    var status = statuses.FirstOrDefault(s => s.FacilitySlotStatusId == slot.FacilitySlotStatusId);
+
+                    return new FacilitySlotResponseDTO
+                    {
+                        SlotId = slot.SlotId,
+                        EmployeeId = employee?.EmployeeId,
+                        EmployeeName = employee?.FullName,
+                        EmployeePhoto = employee?.EmployeePhoto,
+                        FacilityName = slot.FacilityResource?.Facility?.FacilityName,
+                        FacilityResourceName = slot.FacilityResource?.FacilityResourceName,
+                        SlotDate = slot.SlotDate,
+                        StartTime = slot.StartTime,
+                        EndTime = slot.EndTime,
+                        FacilitySlotStatusName = status?.FacilitySlotStatusName
+                    };
+                }).ToList();
+
+                return new PaginatedResult<FacilitySlotResponseDTO>
+                {
+                    Items = response,
+                    PageNumber = filterRequest.PageNumber,
+                    PageSize = filterRequest.PageSize,
+                    TotalItems = totalItems
+                };
+            });
+        }
     }
 }
