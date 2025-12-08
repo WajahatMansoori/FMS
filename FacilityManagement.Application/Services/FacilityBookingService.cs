@@ -92,25 +92,38 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
-                var booking = new Booking
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    SlotId = bookingRequestDTO.SlotId,
-                    EmployeeId = bookingRequestDTO.EmployeeId,
-                    BookingDate = DateTime.Now,
-                    Remarks = bookingRequestDTO.Remarks,
-                    CreatedBy = bookingRequestDTO.EmployeeId,
-                    CreatedOn = DateTime.Now,
-                    IsActive = true
-                };
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        var booking = new Booking
+                        {
+                            SlotId = bookingRequestDTO.SlotId,
+                            EmployeeId = bookingRequestDTO.EmployeeId,
+                            BookingDate = DateTime.Now,
+                            CreatedBy = bookingRequestDTO.EmployeeId,
+                            CreatedOn = DateTime.Now,
+                            IsActive = true
+                        };
+                        await _context.Bookings.AddAsync(booking);
 
-                await _context.Bookings.AddAsync(booking);
+                        slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Reserved;
+                        slot.UpdatedBy = bookingRequestDTO.EmployeeId;
+                        slot.UpdatedOn = DateTime.Now;
+                        _context.Slots.Update(slot);
 
-                slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Reserved;
-                slot.UpdatedBy = bookingRequestDTO.EmployeeId;
-                slot.UpdatedOn = DateTime.Now;
-                _context.Slots.Update(slot);
-
-                await _facilityManagementUnitOfWork.SaveChangesAsync(bookingRequestDTO.EmployeeId);
+                        await _facilityManagementUnitOfWork.SaveChangesAsync(bookingRequestDTO.EmployeeId);
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        InitMessageResponse("ServerError", ex.Message);
+                        return;
+                    }
+                });
             });
         }
 
@@ -210,20 +223,34 @@ namespace FacilityManagement.Application.Services
                         return;
                     }
                 }
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        booking.CancelledDate = DateTime.Now;
+                        booking.CancelledBy = cancelSlotRequestDTO.EmployeeId;
+                        booking.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
+                        booking.UpdatedOn = DateTime.Now;
+                        booking.Remarks = employee.FacilityRoleId.Value == (int)Enums.FacilityRole.SuperAdmin ? cancelSlotRequestDTO.Remarks : "Slot Cancelled";
+                        _context.Bookings.Update(booking);
 
-                booking.CancelledDate = DateTime.Now;
-                booking.CancelledBy = cancelSlotRequestDTO.EmployeeId;
-                booking.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
-                booking.UpdatedOn = DateTime.Now;
-                booking.Remarks = employee.FacilityRoleId.Value == (int)Enums.FacilityRole.SuperAdmin ? cancelSlotRequestDTO.Remarks : "Slot Cancelled";
-                _context.Bookings.Update(booking);
+                        slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Cancelled;
+                        slot.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
+                        slot.UpdatedOn = DateTime.Now;
+                        _context.Slots.Update(slot);
 
-                slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Cancelled;
-                slot.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
-                slot.UpdatedOn = DateTime.Now;
-                _context.Slots.Update(slot);
-
-                await _facilityManagementUnitOfWork.SaveChangesAsync(cancelSlotRequestDTO.EmployeeId);
+                        await _facilityManagementUnitOfWork.SaveChangesAsync(cancelSlotRequestDTO.EmployeeId);
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        InitMessageResponse("ServerError", ex.Message);
+                        return;
+                    }
+                });
             });
         }
     }

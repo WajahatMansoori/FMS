@@ -10,6 +10,5 @@ namespace FacilityManagement.Application.DTOs.Request
     {
         public int SlotId { get; set; }
         public int EmployeeId { get; set; }
-        public string? Remarks { get; set; }
     }
 }

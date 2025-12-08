@@ -182,7 +182,7 @@ namespace FacilityManagement.Application.Services
                     catch (Exception ex)
                     {
                         await transaction.RollbackAsync();
-                        InitMessageResponse("BadRequest", ex.Message);
+                        InitMessageResponse("ServerError", ex.Message);
                         return;
                     }
                 });
