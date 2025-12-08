@@ -13,6 +13,8 @@ namespace FacilityManagement.Application.Interfaces
     {
         Task<BaseResponse<Task>> AddFacilitySlotAsync(AddFacilitySlotRequestDTO request);
 
+        Task<PagedBaseResponse<List<FacilitySlotResponseDTO>>> GetAllAsync(FacilitySlotFilterRequestDTO filterRequest);
+
         Task<BaseResponse<List<AvailableSlotsResponseDTO>>> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date);
     }
 }

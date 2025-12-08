@@ -32,6 +32,20 @@ namespace FacilityManagement.Api.Controllers
             }
         }
 
+        [HttpGet()]
+        public async Task<IActionResult> GetAllAsync([FromQuery] FacilitySlotFilterRequestDTO filterRequest)
+        {
+            try
+            {
+                var response = await _facilitySlotService.GetAllAsync(filterRequest);
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
+
         [HttpGet("get-all-available-slots")]
         public async Task<IActionResult> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date)
         {
