@@ -55,11 +55,13 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
+                int cancellationWindow = slot.FacilityResource.Facility.CancellationWindowMinutes.Value;
+
                 var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
                 var currentDateTime = DateTime.Now;
                 var timeDifference = slotStartDateTime - currentDateTime;
 
-                if (timeDifference.TotalMinutes < 15)
+                if (timeDifference.TotalMinutes < cancellationWindow)
                 {
                     InitMessageResponse("BadRequest", "You can only book a slot at least 15 minutes before its start time.");
                     return;
@@ -109,6 +111,119 @@ namespace FacilityManagement.Application.Services
                 _context.Slots.Update(slot);
 
                 await _facilityManagementUnitOfWork.SaveChangesAsync(bookingRequestDTO.EmployeeId);
+            });
+        }
+
+        public async Task<BaseResponse<Task>> CancelSlotAsync(CancelSlotRequestDTO cancelSlotRequestDTO)
+        {
+            return await HandleVoidActionAsync(async () =>
+            {
+                if (cancelSlotRequestDTO == null)
+                {
+                    InitMessageResponse("BadRequest", "Cancel request information not found.");
+                    return;
+                }
+
+                var employee = await _context.Employees
+                    .FirstOrDefaultAsync(e => e.EmployeeId == cancelSlotRequestDTO.EmployeeId && e.IsActive == true);
+
+                if (employee == null)
+                {
+                    InitMessageResponse("NotFound", "Employee not found.");
+                    return;
+                }
+
+                if (!employee.FacilityRoleId.HasValue)
+                {
+                    InitMessageResponse("BadRequest", "Employee role not assigned.");
+                    return;
+                }
+
+                var slot = await _context.Slots
+                    .Include(s => s.FacilityResource)
+                    .ThenInclude(fr => fr.Facility)
+                    .FirstOrDefaultAsync(s => s.SlotId == cancelSlotRequestDTO.SlotId && s.IsActive == true);
+
+                if (slot == null)
+                {
+                    InitMessageResponse("NotFound", "Slot not found.");
+                    return;
+                }
+
+                var currentDate = DateOnly.FromDateTime(DateTime.Now);
+                if (slot.SlotDate.HasValue && slot.SlotDate.Value < currentDate)
+                {
+                    InitMessageResponse("BadRequest", "Cannot cancel a slot from a previous date.");
+                    return;
+                }
+
+                if (slot.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Cancelled)
+                {
+                    InitMessageResponse("BadRequest", "This slot is already cancelled.");
+                    return;
+                }
+
+                if (slot.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Available)
+                {
+                    InitMessageResponse("BadRequest", "This slot is not booked yet.");
+                    return;
+                }
+
+                if (slot.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.InProgress)
+                {
+                    InitMessageResponse("BadRequest", "Cannot cancel a slot that is in progress.");
+                    return;
+                }
+
+                if (slot.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Completed)
+                {
+                    InitMessageResponse("BadRequest", "Cannot cancel a slot that has been completed.");
+                    return;
+                }
+
+                var booking = await _context.Bookings
+                    .FirstOrDefaultAsync(b => b.SlotId == cancelSlotRequestDTO.SlotId && b.IsActive == true);
+
+                if (booking == null)
+                {
+                    InitMessageResponse("NotFound", "Booking not found for this slot.");
+                    return;
+                }
+
+                int cancellationWindow = slot.FacilityResource.Facility.CancellationWindowMinutes.Value;
+
+                if (employee.FacilityRoleId.Value == (int)Enums.FacilityRole.Employee)
+                {
+                    if (booking.EmployeeId != cancelSlotRequestDTO.EmployeeId)
+                    {
+                        InitMessageResponse("Forbidden", "You can only cancel your own bookings.");
+                        return;
+                    }
+
+                    var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
+                    var currentDateTime = DateTime.Now;
+                    var timeDifference = slotStartDateTime - currentDateTime;
+
+                    if (timeDifference.TotalMinutes < cancellationWindow)
+                    {
+                        InitMessageResponse("BadRequest", "You can only cancel a slot at least 15 minutes before its start time.");
+                        return;
+                    }
+                }
+
+                booking.CancelledDate = DateTime.Now;
+                booking.CancelledBy = cancelSlotRequestDTO.EmployeeId;
+                booking.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
+                booking.UpdatedOn = DateTime.Now;
+                booking.Remarks = employee.FacilityRoleId.Value == (int)Enums.FacilityRole.SuperAdmin ? cancelSlotRequestDTO.Remarks : "Slot Cancelled";
+                _context.Bookings.Update(booking);
+
+                slot.FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Cancelled;
+                slot.UpdatedBy = cancelSlotRequestDTO.EmployeeId;
+                slot.UpdatedOn = DateTime.Now;
+                _context.Slots.Update(slot);
+
+                await _facilityManagementUnitOfWork.SaveChangesAsync(cancelSlotRequestDTO.EmployeeId);
             });
         }
     }

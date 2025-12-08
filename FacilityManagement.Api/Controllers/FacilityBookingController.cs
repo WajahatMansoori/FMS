@@ -31,5 +31,19 @@ namespace FacilityManagement.Api.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
             }
         }
+
+        [HttpPost("cancel-slot")]
+        public async Task<IActionResult> CancelSlotAsync([FromBody] CancelSlotRequestDTO cancelSlotRequestDTO)
+        {
+            try
+            {
+                var response = await _facilityBookingService.CancelSlotAsync(cancelSlotRequestDTO);
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
     }
 }

@@ -11,5 +11,6 @@ namespace FacilityManagement.Application.Interfaces
     public interface IFacilityBookingService
     {
         Task<BaseResponse<Task>> AddAsync(BookingRequestDTO bookingRequestDTO);
+        Task<BaseResponse<Task>> CancelSlotAsync(CancelSlotRequestDTO cancelSlotRequestDTO);
     }
 }
