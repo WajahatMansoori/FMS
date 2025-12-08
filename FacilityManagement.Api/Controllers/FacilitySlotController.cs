@@ -32,7 +32,7 @@ namespace FacilityManagement.Api.Controllers
             }
         }
 
-        [HttpGet()]
+        [HttpGet("get-all-facility-slot")]
         public async Task<IActionResult> GetAllAsync([FromQuery] FacilitySlotFilterRequestDTO filterRequest)
         {
             try
