@@ -19,6 +19,7 @@ public partial class Facility
     public int? MaxSlotsPerEmployeePerDay { get; set; }
 
     public int? CancellationWindowMinutes { get; set; }
+    public int? BookingWindowMinutes { get; set; }
 
     public int? CreatedBy { get; set; }
 

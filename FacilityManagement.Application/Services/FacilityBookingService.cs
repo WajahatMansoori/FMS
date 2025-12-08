@@ -55,13 +55,13 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
-                int cancellationWindow = slot.FacilityResource.Facility.CancellationWindowMinutes.Value;
+                int bookingWindowminutes = slot.FacilityResource.Facility.BookingWindowMinutes.Value;
 
                 var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
                 var currentDateTime = DateTime.Now;
                 var timeDifference = slotStartDateTime - currentDateTime;
 
-                if (timeDifference.TotalMinutes < cancellationWindow)
+                if (timeDifference.TotalMinutes < bookingWindowminutes)
                 {
                     InitMessageResponse("BadRequest", "You can only book a slot at least 15 minutes before its start time.");
                     return;
