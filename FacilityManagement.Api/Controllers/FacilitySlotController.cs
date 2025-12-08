@@ -31,5 +31,19 @@ namespace FacilityManagement.Api.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
             }
         }
+
+        [HttpGet("get-all-available-slots")]
+        public async Task<IActionResult> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date)
+        {
+            try
+            {
+                var response = await _facilitySlotService.GetAllAvailableSlotsAsync(facilityResourceId, date);
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
     }
 }

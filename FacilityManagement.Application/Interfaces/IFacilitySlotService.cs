@@ -12,5 +12,7 @@ namespace FacilityManagement.Application.Interfaces
     public interface IFacilitySlotService
     {
         Task<BaseResponse<Task>> AddFacilitySlotAsync(AddFacilitySlotRequestDTO request);
+
+        Task<BaseResponse<List<AvailableSlotsResponseDTO>>> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date);
     }
 }

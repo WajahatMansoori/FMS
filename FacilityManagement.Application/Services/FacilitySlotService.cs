@@ -174,5 +174,32 @@ namespace FacilityManagement.Application.Services
                 await _facilityManagementUnitOfWork.SaveChangesAsync();
             });
         }
+
+        public async Task<BaseResponse<List<AvailableSlotsResponseDTO>>> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date)
+        {
+            return await HandleActionAsync(async () =>
+            {
+                var availableSlots = await _context.Slots
+                        .Where(s => s.FacilityResourceId == facilityResourceId
+                                    && s.SlotDate == date
+                                    && s.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Available
+                                    && s.IsActive == true)
+                        .Select(s => new AvailableSlotsResponseDTO
+                        {
+                            SlotStartTime = s.StartTime.HasValue ? s.StartTime.Value : default,
+                            SlotEndTime = s.EndTime.HasValue ? s.EndTime.Value : default
+
+                        })
+                        .ToListAsync();
+
+                if (availableSlots == null || availableSlots.Count == 0)
+                {
+                    InitMessageResponse("NotFound", "No available slots found for the specified resource and date.");
+                    return null!;
+                }
+
+                return availableSlots;
+            });
+        }
     }
 }
