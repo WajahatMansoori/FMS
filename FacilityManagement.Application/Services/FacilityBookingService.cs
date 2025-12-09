@@ -49,6 +49,13 @@ namespace FacilityManagement.Application.Services
                     return;
                 }
 
+                if(!slot.SlotDate.HasValue)
+{
+                    InitMessageResponse("BadRequest", "Slot date is missing.");
+                    return;
+                }
+                var targetDate = slot.SlotDate.Value;
+
                 if (slot.FacilitySlotStatusId != (int)Enums.FacilitySlotStatus.Available)
                 {
                     InitMessageResponse("BadRequest", "This slot is already booked.");
@@ -78,19 +85,28 @@ namespace FacilityManagement.Application.Services
                 var todayBookingsCount = await _context.Bookings
                     .Include(b => b.Slot)
                     .Where(b => b.EmployeeId == bookingRequestDTO.EmployeeId
-                        && b.Slot.SlotDate == today
+                        //&& b.Slot.SlotDate == today
+                        && b.Slot.SlotDate == targetDate
                         && b.IsActive == true
                         && b.Slot.FacilitySlotStatusId.HasValue
                         && restrictedStatuses.Contains(b.Slot.FacilitySlotStatusId.Value))
                     .CountAsync();
 
-                if (slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.HasValue
-                    && todayBookingsCount >= slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.Value
-                    && slot.SlotDate == today)
+                var maxPerDay = slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay;
+                if (maxPerDay.HasValue && todayBookingsCount >= maxPerDay.Value)
                 {
-                    InitMessageResponse("BadRequest", "You have already booked 2 slots for today. You can book slots for future days.");
+                    InitMessageResponse("BadRequest",
+                        $"You have already booked {todayBookingsCount} slot(s) for {targetDate:yyyy-MM-dd}. You cannot book more than {maxPerDay.Value} slot(s) on the same day.");
                     return;
                 }
+
+                //if (slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.HasValue
+                //    && todayBookingsCount == slot.FacilityResource.Facility.MaxSlotsPerEmployeePerDay.Value
+                //    && slot.SlotDate == today)
+                //{
+                //    InitMessageResponse("BadRequest", "You have already booked 2 slots for today. You can book slots for future days.");
+                //    return;
+                //}
 
                 var strategy = _context.Database.CreateExecutionStrategy();
                 await strategy.ExecuteAsync(async () =>

@@ -29,5 +29,19 @@ namespace FacilityManagement.Api.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpGet("quick-search")]
+        public async Task<IActionResult> GetEmployeeQuickSearch(string keyword)
+        {
+            try
+            {
+                var response = await _facilityEmployeeService.GetEmployeeQuickSearch(keyword);
+                return GenerateResponse(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }

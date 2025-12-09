@@ -61,5 +61,41 @@ namespace FacilityManagement.Application.Services
                 return employee;
             });
         }
+
+        public async Task<BaseResponse<List<EmployeeQuickSearchResponseDTO>>> GetEmployeeQuickSearch(string keyword)
+        {
+            return await HandleActionAsync(async () =>
+            {
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    InitMessageResponse("NotFound", "keyword not empty");
+                }
+
+                var query = _context.Employees
+                       .Include(x => x.FacilityRole)
+                       .Where(e =>
+                                e.IsActive == true 
+                                && e.FacilityRoleId==(int)Enums.FacilityRole.Employee
+                                &&
+                                (
+                                    e.FullName.ToLower().Contains(keyword.ToLower()) 
+                                )
+                            );
+
+                var employees = await query
+                       .Select(e => new EmployeeQuickSearchResponseDTO
+                       {
+                           EmployeeId = e.EmployeeId,
+                           FullName = e.FullName,
+                           EmployeePhoto = e.EmployeePhoto != null ? e.EmployeePhoto : null,
+                           FacilityRoleId = (int)e.FacilityRoleId,
+                           FacilityRoleName = e.FacilityRole != null ? e.FacilityRole.FacilityRoleName : null
+                       })
+                       .Take(10)
+                       .ToListAsync();
+
+                return employees;
+            });
+        }
     }
 }

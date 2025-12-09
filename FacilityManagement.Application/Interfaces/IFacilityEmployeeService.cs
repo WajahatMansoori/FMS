@@ -11,5 +11,6 @@ namespace FacilityManagement.Application.Interfaces
     public interface IFacilityEmployeeService
     {
         Task<BaseResponse<EmployeeResponseDTO?>> GetEmployeeByIdAsync(int employeeId);
+        Task<BaseResponse<List<EmployeeQuickSearchResponseDTO>>> GetEmployeeQuickSearch(string keyword);
     }
 }
