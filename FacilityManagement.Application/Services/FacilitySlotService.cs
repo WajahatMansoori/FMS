@@ -328,6 +328,7 @@ namespace FacilityManagement.Application.Services
                                     && s.SlotDate == date
                                     && s.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Available
                                     && s.IsActive == true)
+                        .OrderBy(s=>s.StartTime)
                         .Select(s => new AvailableSlotsResponseDTO
                         {
                             SlotId = s.SlotId,
