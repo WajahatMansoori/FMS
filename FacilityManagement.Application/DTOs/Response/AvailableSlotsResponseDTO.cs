@@ -8,6 +8,7 @@ namespace FacilityManagement.Application.DTOs.Response
 {
     public class AvailableSlotsResponseDTO
     {
+        public int SlotId { get; set; }
         public TimeOnly? SlotStartTime { get; set; }
         public TimeOnly? SlotEndTime { get; set; }
     }

@@ -330,6 +330,7 @@ namespace FacilityManagement.Application.Services
                                     && s.IsActive == true)
                         .Select(s => new AvailableSlotsResponseDTO
                         {
+                            SlotId = s.SlotId,
                             SlotStartTime = s.StartTime.HasValue ? s.StartTime.Value : default,
                             SlotEndTime = s.EndTime.HasValue ? s.EndTime.Value : default
 
