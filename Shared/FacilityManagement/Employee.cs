@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Shared.FacilityManagement;
 
@@ -22,4 +23,7 @@ public partial class Employee
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
+
+    [ForeignKey(nameof(FacilityRoleId))]
+    public FacilityRole FacilityRole { get; set; } = null!;
 }

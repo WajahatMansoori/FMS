@@ -7,7 +7,8 @@ using System.Net;
 
 namespace FacilityManagement.Api.Controllers
 {
-    [Route("api/[controller]")]
+    //[Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class FacilityBookingController : BaseController
     {

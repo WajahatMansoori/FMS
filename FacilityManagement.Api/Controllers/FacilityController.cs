@@ -6,7 +6,7 @@ using Shared.Base;
 
 namespace FacilityManagement.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class FacilityController : BaseController
     {

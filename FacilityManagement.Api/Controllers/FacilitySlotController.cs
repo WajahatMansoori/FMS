@@ -7,7 +7,7 @@ using System.Net;
 
 namespace FacilityManagement.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class FacilitySlotController : BaseController
     {
@@ -32,7 +32,7 @@ namespace FacilityManagement.Api.Controllers
             }
         }
 
-        [HttpGet()]
+        [HttpGet("get-all-facility-slot")]
         public async Task<IActionResult> GetAllAsync([FromQuery] FacilitySlotFilterRequestDTO filterRequest)
         {
             try
