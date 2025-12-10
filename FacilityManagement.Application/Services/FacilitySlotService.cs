@@ -196,8 +196,8 @@ namespace FacilityManagement.Application.Services
               
             });
         }
-
-        public async Task<PagedBaseResponse<List<FacilitySlotResponseDTO>>> GetAllAsync(FacilitySlotFilterRequestDTO filterRequest)
+        /*
+        public async Task<PagedBaseResponse<List<FacilitySlotResponseDTO>>> GetAllAsyncold(FacilitySlotFilterRequestDTO filterRequest)
         {
             return await HandlePaginatedActionAsync<FacilitySlotResponseDTO, FacilitySlotResponseDTO>(async () =>
             {
@@ -298,6 +298,146 @@ namespace FacilityManagement.Application.Services
                     var booking = bookings.FirstOrDefault(b => b.SlotId == slot.SlotId);
                     var employee = booking != null ? employees.FirstOrDefault(e => e.EmployeeId == booking.EmployeeId) : null;
                     var status = statuses.FirstOrDefault(s => s.FacilitySlotStatusId == slot.FacilitySlotStatusId);
+
+                    return new FacilitySlotResponseDTO
+                    {
+                        SlotId = slot.SlotId,
+                        EmployeeId = employee?.EmployeeId,
+                        EmployeeName = employee?.FullName,
+                        EmployeePhoto = employee?.EmpPhoto,
+                        FacilityName = slot.FacilityResource?.Facility?.FacilityName,
+                        FacilityResourceName = slot.FacilityResource?.FacilityResourceName,
+                        SlotDate = slot.SlotDate,
+                        StartTime = slot.StartTime,
+                        EndTime = slot.EndTime,
+                        FacilitySlotStatusName = status?.FacilitySlotStatusName
+                    };
+                }).ToList();
+
+                return new PaginatedResult<FacilitySlotResponseDTO>
+                {
+                    Items = response,
+                    PageNumber = filterRequest.PageNumber,
+                    PageSize = filterRequest.PageSize,
+                    TotalItems = totalItems
+                };
+            });
+        }
+        */
+        public async Task<PagedBaseResponse<List<FacilitySlotResponseDTO>>> GetAllAsync(
+        FacilitySlotFilterRequestDTO filterRequest)
+        {
+            return await HandlePaginatedActionAsync<FacilitySlotResponseDTO, FacilitySlotResponseDTO>(async () =>
+            {
+                // Get Pakistan current datetime (from UTC)
+                DateTime pakistanNow =
+                    _convertUtcToPakistanTimeHelper.ConvertUtcToPakistanTime(DateTime.UtcNow);
+
+                var today = DateOnly.FromDateTime(pakistanNow);
+                var currentTimePkt = TimeOnly.FromDateTime(pakistanNow);
+
+                var startDate = filterRequest.StartDate ?? today;
+                var endDate = filterRequest.EndDate ?? today;
+
+                // Validation: StartDate > EndDate
+                if (startDate > endDate)
+                {
+                    InitMessageResponse("BadRequest", "Start Date cannot be greater than End Date.");
+                    return null!;
+                }
+
+                // Validation: EmployeeId required
+                if (!filterRequest.EmployeeId.HasValue)
+                {
+                    InitMessageResponse("BadRequest", "EmployeeId is required.");
+                    return null!;
+                }
+
+                //Base query with past-slot exclusion for TODAY
+                var query = _context.Slots
+                    .Include(s => s.FacilityResource)
+                        .ThenInclude(fr => fr.Facility)
+                    .Where(s => s.IsActive==true
+                        && s.SlotDate >= startDate
+                        && s.SlotDate <= endDate
+                        && (s.SlotDate > today
+                            || (s.SlotDate == today && s.StartTime >= currentTimePkt))
+                    );
+
+                // Get role
+                var facilityRoleId = await _context.Employees
+                    .Where(e => e.EmployeeId == filterRequest.EmployeeId)
+                    .Select(e => e.FacilityRoleId)
+                    .FirstOrDefaultAsync();
+
+                // Role-based filtering
+                if (facilityRoleId == (int)Enums.FacilityRole.Employee)
+                {
+                    // Employees cannot see Available slots
+                    query = query.Where(s =>
+                        s.FacilitySlotStatusId != (int)Enums.FacilitySlotStatus.Available);
+                }
+
+                // Filter employee's own booked slots
+                if (facilityRoleId == (int)Enums.FacilityRole.Employee)
+                {
+                    var employeeSlotIds = await _context.Bookings
+                        .Where(b => b.EmployeeId == filterRequest.EmployeeId && b.IsActive==true)
+                        .Select(b => b.SlotId!.Value)
+                        .ToListAsync();
+
+                    query = query.Where(s => employeeSlotIds.Contains(s.SlotId));
+                }
+
+                // Get ordered slot IDs
+                var slotIds = await query
+                    .OrderBy(s => s.SlotDate)
+                    .ThenBy(s => s.StartTime)
+                    .Select(s => s.SlotId)
+                    .ToListAsync();
+
+                var totalItems = slotIds.Count;
+
+                // Pagination
+                var pagedSlotIds = slotIds
+                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
+                    .Take(filterRequest.PageSize)
+                    .ToList();
+
+                // Load bookings
+                var bookings = await _context.Bookings
+                    .Include(b => b.Slot)
+                    .Where(b => pagedSlotIds.Contains(b.SlotId!.Value) && b.IsActive == true)
+                    .ToListAsync();
+
+                // Load employees
+                var employeeIds = bookings.Select(b => b.EmployeeId).Distinct().ToList();
+                var employees = await _context.Employees
+                    .Where(e => employeeIds.Contains(e.EmployeeId))
+                    .ToListAsync();
+
+                // Load statuses
+                var statuses = await _context.FacilitySlotStatuses.ToListAsync();
+
+                // Load slots
+                var slots = await _context.Slots
+                    .Include(s => s.FacilityResource)
+                        .ThenInclude(fr => fr.Facility)
+                    .Where(s => pagedSlotIds.Contains(s.SlotId))
+                    .OrderBy(s => s.SlotDate)
+                    .ThenBy(s => s.StartTime)
+                    .ToListAsync();
+
+                //  Map response
+                var response = slots.Select(slot =>
+                {
+                    var booking = bookings.FirstOrDefault(b => b.SlotId == slot.SlotId);
+                    var employee = booking != null
+                        ? employees.FirstOrDefault(e => e.EmployeeId == booking.EmployeeId)
+                        : null;
+
+                    var status = statuses.FirstOrDefault(
+                        s => s.FacilitySlotStatusId == slot.FacilitySlotStatusId);
 
                     return new FacilitySlotResponseDTO
                     {
