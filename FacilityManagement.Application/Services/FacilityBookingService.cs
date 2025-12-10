@@ -154,7 +154,7 @@ namespace FacilityManagement.Application.Services
                 }
 
                 var employee = await _context.Employees
-                    .FirstOrDefaultAsync(e => e.EmployeeId == cancelSlotRequestDTO.EmployeeId && e.IsActive == true);
+                    .FirstOrDefaultAsync(e => e.EmployeeId == cancelSlotRequestDTO.EmployeeId);
 
                 if (employee == null)
                 {

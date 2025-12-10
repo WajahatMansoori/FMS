@@ -58,13 +58,34 @@ public partial class AstrikFacilityContext : DbContext
             entity.ToTable("Employee");
 
             entity.Property(e => e.EmployeeId).ValueGeneratedNever();
-            entity.Property(e => e.CreatedOn)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.EmployeePhoto).IsUnicode(false);
-            entity.Property(e => e.FullName).HasMaxLength(150);
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.UpdatedOn).HasColumnType("datetime");
+            entity.Property(e => e.DeptName)
+        .HasMaxLength(200)
+        .IsUnicode(false);
+            entity.Property(e => e.DesignationName)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.EmployeeCode)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.FacilityRoleId).HasDefaultValue(2);
+            entity.Property(e => e.FullName)
+                .HasMaxLength(250)
+                .IsUnicode(false);
+            entity.Property(e => e.LocationName)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.MobileNo)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.OfficialEmailAddress)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.PhoneNo)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.WhatsappNo)
+                .HasMaxLength(20)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<Facility>(entity =>

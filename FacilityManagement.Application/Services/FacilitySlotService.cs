@@ -221,7 +221,7 @@ namespace FacilityManagement.Application.Services
                         && s.SlotDate <= endDate);
 
                 var facilityRoleId = _context.Employees
-                    .Where(e => e.EmployeeId == filterRequest.EmployeeId && e.IsActive == true)
+                    .Where(e => e.EmployeeId == filterRequest.EmployeeId)
                     .Select(e => e.FacilityRoleId)
                     .FirstOrDefault();
 
@@ -300,7 +300,7 @@ namespace FacilityManagement.Application.Services
                         SlotId = slot.SlotId,
                         EmployeeId = employee?.EmployeeId,
                         EmployeeName = employee?.FullName,
-                        EmployeePhoto = employee?.EmployeePhoto,
+                        EmployeePhoto = employee?.EmpPhoto,
                         FacilityName = slot.FacilityResource?.Facility?.FacilityName,
                         FacilityResourceName = slot.FacilityResource?.FacilityResourceName,
                         SlotDate = slot.SlotDate,

@@ -36,19 +36,23 @@ namespace FacilityManagement.Application.Services
         {
             return await HandleActionAsync(async () =>
             {
-                var ticketEmployeeRole = await _context.Employees
-                                             .Include(x=>x.FacilityRole)
-                                            .Where(e => e.EmployeeId == employeeId && e.IsActive == true)
-                                            .FirstOrDefaultAsync();
-
-
                 var employee = await _context.Employees
                             .Where(x => x.EmployeeId == employeeId)
                             .Select(e => new EmployeeResponseDTO
                             {
                                 EmployeeId = e.EmployeeId,
                                 FullName = e.FullName,
-                                EmployeePhoto = e.EmployeePhoto,
+                                EmployeeCode=e.EmployeeCode,
+                                EmployeePhoto = e.EmpPhoto,
+                                DepartmentId=(int)e.DeptId,
+                                DepartmentName=e.DeptName,
+                                DesignationId=(int)e.DesignationId,
+                                DesignationName=e.DesignationName,
+                                OfficialEmailAddress=e.OfficialEmailAddress,
+                                PhoneNo=e.PhoneNo,
+                                MobileNo=e.MobileNo,
+                                LocationId=(int)e.LocationId,
+                                LocationName=e.LocationName,
                                 FacilityRoleId=(int)e.FacilityRoleId,
                                 FacilityRoleName=e.FacilityRole.FacilityRoleName
                             })
@@ -74,20 +78,28 @@ namespace FacilityManagement.Application.Services
                 var query = _context.Employees
                        .Include(x => x.FacilityRole)
                        .Where(e =>
-                                e.IsActive == true 
-                                && e.FacilityRoleId==(int)Enums.FacilityRole.Employee
+                                 e.FacilityRoleId == (int)Enums.FacilityRole.Employee
                                 &&
                                 (
-                                    e.FullName.ToLower().Contains(keyword.ToLower()) 
+                                    e.FullName.ToLower().Contains(keyword.ToLower())
                                 )
-                            );
+                            )
+                       .OrderBy(e => e.FullName);
 
                 var employees = await query
                        .Select(e => new EmployeeQuickSearchResponseDTO
                        {
                            EmployeeId = e.EmployeeId,
+                           EmployeeCode=e.EmployeeCode,
                            FullName = e.FullName,
-                           EmployeePhoto = e.EmployeePhoto != null ? e.EmployeePhoto : null,
+                           DepartmentId=(int)e.DeptId,
+                           DepartmentName=e.DeptName,
+                           DesignationId=(int)e.DesignationId,
+                           DesignationName=e.DesignationName,
+                           LocationId=(int)e.LocationId,
+                           LocationName=e.LocationName,
+                           OfficialEmailAddress=e.OfficialEmailAddress,
+                           EmployeePhoto = e.EmpPhoto != null ? e.EmpPhoto : null,
                            FacilityRoleId = (int)e.FacilityRoleId,
                            FacilityRoleName = e.FacilityRole != null ? e.FacilityRole.FacilityRoleName : null
                        })
