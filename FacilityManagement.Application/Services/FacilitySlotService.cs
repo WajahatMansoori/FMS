@@ -171,7 +171,8 @@ namespace FacilityManagement.Application.Services
                         // If no unique slots to create, return error
                         if (totalSlotsCreated == 0)
                         {
-                            InitMessageResponse("Conflict", "All slots in the specified date range already exist. No new slots were created.");
+                            InitMessageResponse("Duplicate", "All slots in the specified date range already exist. No new slots were created.");
+                            await transaction.RollbackAsync();
                             return;
                         }
 
@@ -319,33 +320,58 @@ namespace FacilityManagement.Application.Services
             });
         }
 
+
         public async Task<BaseResponse<List<AvailableSlotsResponseDTO>>> GetAllAvailableSlotsAsync(int facilityResourceId, DateOnly date)
         {
             return await HandleActionAsync(async () =>
             {
-                var availableSlots = await _context.Slots
-                        .Where(s => s.FacilityResourceId == facilityResourceId
-                                    && s.SlotDate == date
-                                    && s.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Available
-                                    && s.IsActive == true)
-                        .OrderBy(s=>s.StartTime)
-                        .Select(s => new AvailableSlotsResponseDTO
-                        {
-                            SlotId = s.SlotId,
-                            SlotStartTime = s.StartTime.HasValue ? s.StartTime.Value : default,
-                            SlotEndTime = s.EndTime.HasValue ? s.EndTime.Value : default
+                var today = DateOnly.FromDateTime(DateTime.Now);
 
-                        })
-                        .ToListAsync();
-
-                if (availableSlots == null || availableSlots.Count == 0)
+                if (date < today)
                 {
-                    InitMessageResponse("NotFound", "No available slots found for the specified resource and date.");
+                    InitMessageResponse("BadRequest", "Can't select previous date.");
+                    return null!;
+                }
+
+                var query = _context.Slots
+                    .Where(s => s.FacilityResourceId == facilityResourceId
+                                && s.SlotDate == date
+                                && (s.FacilitySlotStatusId == (int)Enums.FacilitySlotStatus.Available || s.FacilitySlotStatusId==(int)Enums.FacilitySlotStatus.Cancelled)
+                                && s.IsActive == true);
+
+                if (date == today)
+                {
+                    var currentTime = TimeOnly.FromDateTime(DateTime.Now);
+
+                    // round up to next slot boundary (e.g. 01:46 → 02:00)
+                    var nextSlotTime = new TimeOnly(
+                        currentTime.Hour,
+                        currentTime.Minute < 30 ? 30 : 0
+                    ).AddMinutes(currentTime.Minute < 30 ? 0 : 60);
+
+                    query = query.Where(s => s.StartTime >= nextSlotTime);
+                }
+
+                var availableSlots = await query
+                    .OrderBy(s => s.StartTime)
+                    .Select(s => new AvailableSlotsResponseDTO
+                    {
+                        SlotId = s.SlotId,
+                        SlotStartTime = s.StartTime ?? default,
+                        SlotEndTime = s.EndTime ?? default
+                    })
+                    .ToListAsync();
+
+                if (!availableSlots.Any())
+                {
+                    InitMessageResponse("NotFound",
+                        "No available slots found for the specified resource and date.");
                     return null!;
                 }
 
                 return availableSlots;
             });
         }
+
     }
 }
