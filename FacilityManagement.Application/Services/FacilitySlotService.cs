@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Shared.Base;
 using Shared.Base.Responses;
 using Shared.FacilityManagement;
+using Shared.Helpers;
 using Shared.UnitOfWork;
 
 namespace FacilityManagement.Application.Services
@@ -21,13 +22,16 @@ namespace FacilityManagement.Application.Services
     {
         private readonly IMapper _mapper;
         private readonly IFacilityManagementUnitOfWork _facilityManagementUnitOfWork;
+        private readonly ConvertUtcToPakistanTimeHelper _convertUtcToPakistanTimeHelper;
 
-        public FacilitySlotService(IMapper mapper, AstrikFacilityContext context, IFacilityManagementUnitOfWork facilityManagementUnitOfWork, IConfiguration configuration)
+        public FacilitySlotService(IMapper mapper, AstrikFacilityContext context, IFacilityManagementUnitOfWork facilityManagementUnitOfWork, ConvertUtcToPakistanTimeHelper convertUtcToPakistanTimeHelper,
+            IConfiguration configuration)
             : base(context)
         {
             _mapper = mapper;
             _context = context;
             _facilityManagementUnitOfWork = facilityManagementUnitOfWork;
+            _convertUtcToPakistanTimeHelper = convertUtcToPakistanTimeHelper;
         }
 
         public async Task<BaseResponse<Task>> AddFacilitySlotAsync(AddFacilitySlotRequestDTO request)
@@ -325,7 +329,8 @@ namespace FacilityManagement.Application.Services
         {
             return await HandleActionAsync(async () =>
             {
-                var today = DateOnly.FromDateTime(DateTime.Now);
+               DateTime CurrentPakistanDateTime = _convertUtcToPakistanTimeHelper.ConvertUtcToPakistanTime(DateTime.UtcNow);
+                var today = DateOnly.FromDateTime(CurrentPakistanDateTime);
 
                 if (date < today)
                 {
@@ -341,13 +346,20 @@ namespace FacilityManagement.Application.Services
 
                 if (date == today)
                 {
-                    var currentTime = TimeOnly.FromDateTime(DateTime.Now);
+                    //var currentTime = TimeOnly.FromDateTime(DateTime.Now);
+                    //var pakistanNow = _convertUtcToPakistanTimeHelper.ConvertUtcToPakistanTime(CurrentPakistanDateTime);
+                    var currentTimePkt = TimeOnly.FromDateTime(CurrentPakistanDateTime);
 
                     // round up to next slot boundary (e.g. 01:46 → 02:00)
                     var nextSlotTime = new TimeOnly(
-                        currentTime.Hour,
-                        currentTime.Minute < 30 ? 30 : 0
-                    ).AddMinutes(currentTime.Minute < 30 ? 0 : 60);
+                     currentTimePkt.Hour,
+                     currentTimePkt.Minute < 30 ? 30 : 0
+                 ).AddMinutes(currentTimePkt.Minute < 30 ? 0 : 60);
+
+                    //var nextSlotTime = new TimeOnly(
+                    //    currentTime.Hour,
+                    //    currentTime.Minute < 30 ? 30 : 0
+                    //).AddMinutes(currentTime.Minute < 30 ? 0 : 60);
 
                     query = query.Where(s => s.StartTime >= nextSlotTime);
                 }

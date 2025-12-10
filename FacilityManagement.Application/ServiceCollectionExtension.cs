@@ -40,6 +40,7 @@ namespace FacilityManagement.Application
             services.AddScoped<IFacilityManagementUnitOfWork, FacilityManagementUnitOfWork>();
             services.AddScoped<IFacilityBookingService, FacilityBookingService>();
             services.AddScoped<IFacilityEmployeeService, FacilityEmployeeService>();
+            services.AddScoped<ConvertUtcToPakistanTimeHelper>();
             services.AddAutoMapper(typeof(Profiles));
 
             return services;
