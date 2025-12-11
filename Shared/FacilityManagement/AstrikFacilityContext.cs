@@ -31,8 +31,6 @@ public partial class AstrikFacilityContext : DbContext
 
     public virtual DbSet<Slot> Slots { get; set; }
 
-    public virtual DbSet<SlotGenerationConfig> SlotGenerationConfigs { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Booking>(entity =>
@@ -170,19 +168,9 @@ public partial class AstrikFacilityContext : DbContext
             entity.Property(e => e.CreatedOn)
                 .HasDefaultValueSql("(getutcdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.UpdatedOn).HasColumnType("datetime");
-        });
-
-        modelBuilder.Entity<SlotGenerationConfig>(entity =>
-        {
-            entity.HasKey(e => e.SlotGenerationConfigId).HasName("PK__SlotGene__C5D9245BD1960C7E");
-
-            entity.ToTable("SlotGenerationConfig");
-
-            entity.Property(e => e.CreatedOn)
-                .HasDefaultValueSql("(getutcdate())")
-                .HasColumnType("datetime");
+            entity.Property(e => e.RowVersion)
+               .IsRowVersion()
+               .IsConcurrencyToken();
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.UpdatedOn).HasColumnType("datetime");
         });

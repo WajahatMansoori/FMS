@@ -16,7 +16,6 @@ public partial class Slot
 
     public TimeOnly? EndTime { get; set; }
 
-    public int? SlotGenerationConfigId { get; set; }
 
     public int? FacilitySlotStatusId { get; set; }
 
@@ -29,9 +28,8 @@ public partial class Slot
     public DateTime? UpdatedOn { get; set; }
 
     public bool? IsActive { get; set; }
-    
-    [ForeignKey(nameof(SlotGenerationConfigId))]
-    public virtual SlotGenerationConfig SlotGenerationConfig { get; set; } = null!;
+
+    public byte[] RowVersion { get; set; } = null!;
 
     [ForeignKey(nameof(FacilityResourceId))]
     public virtual FacilityResource FacilityResource { get; set; } = null!;
