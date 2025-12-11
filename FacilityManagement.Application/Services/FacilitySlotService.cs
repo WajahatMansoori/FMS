@@ -82,17 +82,6 @@ namespace FacilityManagement.Application.Services
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     try
                     {
-                        //var slotGenerationConfig = new SlotGenerationConfig
-                        //{
-                        //    FacilityId = facility.FacilityId,
-                        //    IsWithWeekend = request.IsWithWeekend,
-                        //    CreatedOn = DateTime.Now,
-                        //    IsActive = true
-                        //};
-
-                        //await _context.SlotGenerationConfigs.AddAsync(slotGenerationConfig);
-                        //await _facilityManagementUnitOfWork.SaveChangesAsync();
-
                         int totalSlotsCreated = 0;
 
                         var existingSlots = await _context.Slots
@@ -134,8 +123,6 @@ namespace FacilityManagement.Application.Services
                                         EndTime = oneEnd,
                                         //SlotGenerationConfigId = slotGenerationConfig.SlotGenerationConfigId,
                                         FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Available,
-                                        CreatedOn = DateTime.Now,
-                                        IsActive = true
                                     });
 
                                     totalSlotsCreated++;
@@ -198,7 +185,6 @@ namespace FacilityManagement.Application.Services
                                     EndTime = extraEnd,
                                     //SlotGenerationConfigId = slotGenerationConfig.SlotGenerationConfigId,
                                     FacilitySlotStatusId = (int)Enums.FacilitySlotStatus.Available,
-                                    CreatedOn = DateTime.Now,
                                     IsActive = true
                                 });
 
