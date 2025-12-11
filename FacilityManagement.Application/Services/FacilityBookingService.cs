@@ -259,6 +259,19 @@ namespace FacilityManagement.Application.Services
                         return;
                     }
                 }
+                // SuperAdmin cancellation logic
+                if (employee.FacilityRoleId.Value == (int)Enums.FacilityRole.SuperAdmin)
+                {
+                    var slotStartDateTime = slot.SlotDate.Value.ToDateTime(slot.StartTime.Value);
+                    var currentDateTime = currentPakistanTime;
+
+                    if (currentDateTime >= slotStartDateTime)
+                    {
+                        InitMessageResponse("BadRequest", "Cannot cancel a slot that has already started.");
+                        return;
+                    }
+                }
+
                 var strategy = _context.Database.CreateExecutionStrategy();
                 await strategy.ExecuteAsync(async () =>
                 {
